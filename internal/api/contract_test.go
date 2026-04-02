@@ -1116,6 +1116,13 @@ func TestAPIContract_SystemEnvConfigSnapshot(t *testing.T) {
 			body["default_platform_allocation_policy"],
 		)
 	}
+	bypassList, ok := body["proxy_transport_bypass_list"].([]any)
+	if !ok || len(bypassList) == 0 {
+		t.Fatalf("proxy_transport_bypass_list: got %v, want non-empty array", body["proxy_transport_bypass_list"])
+	}
+	if bypassList[0] != "localhost" {
+		t.Fatalf("proxy_transport_bypass_list[0]: got %v, want localhost", bypassList[0])
+	}
 	if body["admin_token_set"] != false {
 		t.Fatalf("admin_token_set: got %v, want false", body["admin_token_set"])
 	}

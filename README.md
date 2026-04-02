@@ -84,6 +84,7 @@ services:
       RESIN_AUTH_VERSION: "V1" # Required: LEGACY_V0 or V1
       RESIN_ADMIN_TOKEN: "admin123" # Change to your admin dashboard password
       RESIN_PROXY_TOKEN: "my-token" # Change to your proxy password
+      RESIN_PROXY_TRANSPORT_BYPASS_LIST: "localhost;127.*;192.168.*;10.*;172.16.*;172.17.*;172.18.*;172.19.*;172.20.*;172.21.*;172.22.*;172.23.*;172.24.*;172.25.*;172.26.*;172.27.*;172.28.*;172.29.*;172.30.*;172.31.*" # Optional: bypass proxy for local/private addresses
       RESIN_LISTEN_ADDRESS: 0.0.0.0
       RESIN_PORT: 2260
     ports:
@@ -117,6 +118,7 @@ If you just need a high-performance, large-capacity proxy pool with automatic he
 
 Once Resin is running, point your app to `http://127.0.0.1:2260`.
 If you do not want a proxy password, explicitly set `RESIN_PROXY_TOKEN=""` (the variable must still be defined). Then connect directly to `http://127.0.0.1:2260`.
+If you want local or private destinations to connect directly instead of going through upstream proxy nodes, set `RESIN_PROXY_TRANSPORT_BYPASS_LIST`. Entries are separated by semicolons or new lines. Supported formats are exact hosts like `localhost`, domain suffixes like `.example.com`, IPv4 wildcards like `127.*`, and CIDR ranges like `10.0.0.0/8`. Matching ignores ports.
 
 Example with curl:
 
@@ -279,6 +281,7 @@ Go to the project's <a href="https://github.com/Resinat/Resin/releases">Release<
 RESIN_ADMIN_TOKEN=<admin-dashboard-password> \
 RESIN_AUTH_VERSION=V1 \
 RESIN_PROXY_TOKEN=<proxy-password> \
+RESIN_PROXY_TRANSPORT_BYPASS_LIST='localhost;127.*;192.168.*;10.*;172.16.*;172.17.*;172.18.*;172.19.*;172.20.*;172.21.*;172.22.*;172.23.*;172.24.*;172.25.*;172.26.*;172.27.*;172.28.*;172.29.*;172.30.*;172.31.*' \
 RESIN_STATE_DIR=./data/state \
 RESIN_CACHE_DIR=./data/cache \
 RESIN_LOG_DIR=./data/log \
@@ -309,6 +312,7 @@ go build -tags "with_quic with_wireguard with_grpc with_utls" -o resin ./cmd/res
 RESIN_ADMIN_TOKEN=<admin-dashboard-password> \
 RESIN_AUTH_VERSION=V1 \
 RESIN_PROXY_TOKEN=<proxy-password> \
+RESIN_PROXY_TRANSPORT_BYPASS_LIST='localhost;127.*;192.168.*;10.*;172.16.*;172.17.*;172.18.*;172.19.*;172.20.*;172.21.*;172.22.*;172.23.*;172.24.*;172.25.*;172.26.*;172.27.*;172.28.*;172.29.*;172.30.*;172.31.*' \
 RESIN_STATE_DIR=./data/state \
 RESIN_CACHE_DIR=./data/cache \
 RESIN_LOG_DIR=./data/log \

@@ -78,6 +78,7 @@ func TestOutboundTransportPool_AppliesConfiguredLimits(t *testing.T) {
 		MaxIdleConns:        9,
 		MaxIdleConnsPerHost: 3,
 		IdleConnTimeout:     12 * time.Second,
+		BypassList:          []string{"localhost"},
 	})
 	ob := &noopOutbound{}
 	hash := node.Hash{1}
@@ -91,6 +92,60 @@ func TestOutboundTransportPool_AppliesConfiguredLimits(t *testing.T) {
 	}
 	if transport.IdleConnTimeout != 12*time.Second {
 		t.Fatalf("IdleConnTimeout: got %s, want %s", transport.IdleConnTimeout, 12*time.Second)
+	}
+}
+
+func TestOutboundTransportPool_DirectDialBypassMatch(t *testing.T) {
+	calledDirect := 0
+	calledOutbound := 0
+	pool := newOutboundTransportPoolWithConfig(OutboundTransportConfig{
+		BypassList: []string{"localhost", "127.*"},
+		directDialContext: func(context.Context, string, string) (net.Conn, error) {
+			calledDirect++
+			return nil, errors.New("direct dial sentinel")
+		},
+	})
+	hash := node.Hash{1}
+	transport := pool.Get(hash, &trackingOutbound{dial: func(context.Context, string, M.Socksaddr) (net.Conn, error) {
+		calledOutbound++
+		return nil, errors.New("outbound dial sentinel")
+	}}, nil)
+	_, err := transport.DialContext(context.Background(), "tcp", "localhost:443")
+	if err == nil || err.Error() != "direct dial sentinel" {
+		t.Fatalf("DialContext() error = %v, want direct dial sentinel", err)
+	}
+	if calledDirect != 1 {
+		t.Fatalf("calledDirect = %d, want 1", calledDirect)
+	}
+	if calledOutbound != 0 {
+		t.Fatalf("calledOutbound = %d, want 0", calledOutbound)
+	}
+}
+
+func TestOutboundTransportPool_UsesOutboundWhenBypassMisses(t *testing.T) {
+	calledDirect := 0
+	calledOutbound := 0
+	pool := newOutboundTransportPoolWithConfig(OutboundTransportConfig{
+		BypassList: []string{"localhost"},
+		directDialContext: func(context.Context, string, string) (net.Conn, error) {
+			calledDirect++
+			return nil, errors.New("direct dial sentinel")
+		},
+	})
+	hash := node.Hash{1}
+	transport := pool.Get(hash, &trackingOutbound{dial: func(context.Context, string, M.Socksaddr) (net.Conn, error) {
+		calledOutbound++
+		return nil, errors.New("outbound dial sentinel")
+	}}, nil)
+	_, err := transport.DialContext(context.Background(), "tcp", "example.com:443")
+	if err == nil || err.Error() != "outbound dial sentinel" {
+		t.Fatalf("DialContext() error = %v, want outbound dial sentinel", err)
+	}
+	if calledDirect != 0 {
+		t.Fatalf("calledDirect = %d, want 0", calledDirect)
+	}
+	if calledOutbound != 1 {
+		t.Fatalf("calledOutbound = %d, want 1", calledOutbound)
 	}
 }
 
@@ -110,3 +165,15 @@ func TestOutboundTransportPool_CloseAllClearsEntries(t *testing.T) {
 		t.Fatal("expected a new transport after CloseAll")
 	}
 }
+
+type trackingOutbound struct {
+	adapter.Outbound
+	dial func(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error)
+}
+
+func (o *trackingOutbound) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
+	return o.dial(ctx, network, destination)
+}
+
+func (o *trackingOutbound) Tag() string  { return "tracking" }
+func (o *trackingOutbound) Type() string { return "tracking" }

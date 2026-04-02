@@ -30,6 +30,7 @@ type systemEnvConfigResponse struct {
 	ProxyTransportMaxIdleConns                      int             `json:"proxy_transport_max_idle_conns"`
 	ProxyTransportMaxIdleConnsPerHost               int             `json:"proxy_transport_max_idle_conns_per_host"`
 	ProxyTransportIdleConnTimeout                   config.Duration `json:"proxy_transport_idle_conn_timeout"`
+	ProxyTransportBypassList                        []string        `json:"proxy_transport_bypass_list"`
 	RequestLogQueueSize                             int             `json:"request_log_queue_size"`
 	RequestLogQueueFlushBatchSize                   int             `json:"request_log_queue_flush_batch_size"`
 	RequestLogQueueFlushInterval                    config.Duration `json:"request_log_queue_flush_interval"`
@@ -126,6 +127,7 @@ func systemEnvConfigSnapshot(envCfg *config.EnvConfig) *systemEnvConfigResponse 
 		ProxyTransportMaxIdleConns:                      envCfg.ProxyTransportMaxIdleConns,
 		ProxyTransportMaxIdleConnsPerHost:               envCfg.ProxyTransportMaxIdleConnsPerHost,
 		ProxyTransportIdleConnTimeout:                   config.Duration(envCfg.ProxyTransportIdleConnTimeout),
+		ProxyTransportBypassList:                        append([]string(nil), envCfg.ProxyTransportBypassList...),
 		RequestLogQueueSize:                             envCfg.RequestLogQueueSize,
 		RequestLogQueueFlushBatchSize:                   envCfg.RequestLogQueueFlushBatchSize,
 		RequestLogQueueFlushInterval:                    config.Duration(envCfg.RequestLogQueueFlushInterval),

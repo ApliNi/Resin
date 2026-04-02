@@ -323,6 +323,9 @@ func TestSystemEnvConfig_OK(t *testing.T) {
 	if body["probe_timeout"] != "15s" {
 		t.Errorf("probe_timeout: got %q, want %q", body["probe_timeout"], "15s")
 	}
+	if bypassList, ok := body["proxy_transport_bypass_list"].([]any); !ok || len(bypassList) == 0 || bypassList[0] != "localhost" {
+		t.Errorf("proxy_transport_bypass_list: got %v, want list starting with localhost", body["proxy_transport_bypass_list"])
+	}
 	if body["admin_token_set"] != true {
 		t.Errorf("admin_token_set: got %v, want true", body["admin_token_set"])
 	}

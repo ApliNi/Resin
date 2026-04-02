@@ -68,6 +68,9 @@ func TestLoadEnvConfig_Defaults(t *testing.T) {
 	assertEqual(t, "ProxyTransportMaxIdleConns", cfg.ProxyTransportMaxIdleConns, 1024)
 	assertEqual(t, "ProxyTransportMaxIdleConnsPerHost", cfg.ProxyTransportMaxIdleConnsPerHost, 64)
 	assertEqual(t, "ProxyTransportIdleConnTimeout", cfg.ProxyTransportIdleConnTimeout, 90*time.Second)
+	assertEqual(t, "ProxyTransportBypassListLength", len(cfg.ProxyTransportBypassList), 20)
+	assertEqual(t, "ProxyTransportBypassList[0]", cfg.ProxyTransportBypassList[0], "localhost")
+	assertEqual(t, "ProxyTransportBypassList[1]", cfg.ProxyTransportBypassList[1], "127.*")
 
 	// Request log
 	assertEqual(t, "RequestLogQueueSize", cfg.RequestLogQueueSize, 8192)
@@ -110,6 +113,7 @@ func TestLoadEnvConfig_EnvOverrides(t *testing.T) {
 	envs["RESIN_PROXY_TRANSPORT_MAX_IDLE_CONNS"] = "2048"
 	envs["RESIN_PROXY_TRANSPORT_MAX_IDLE_CONNS_PER_HOST"] = "128"
 	envs["RESIN_PROXY_TRANSPORT_IDLE_CONN_TIMEOUT"] = "2m"
+	envs["RESIN_PROXY_TRANSPORT_BYPASS_LIST"] = "localhost; .example.com;10.0.0.0/8"
 	envs["RESIN_REQUEST_LOG_QUEUE_FLUSH_INTERVAL"] = "10m"
 	setEnvs(t, envs)
 
@@ -149,9 +153,22 @@ func TestLoadEnvConfig_EnvOverrides(t *testing.T) {
 	assertEqual(t, "ProxyTransportMaxIdleConns", cfg.ProxyTransportMaxIdleConns, 2048)
 	assertEqual(t, "ProxyTransportMaxIdleConnsPerHost", cfg.ProxyTransportMaxIdleConnsPerHost, 128)
 	assertEqual(t, "ProxyTransportIdleConnTimeout", cfg.ProxyTransportIdleConnTimeout, 2*time.Minute)
+	assertEqual(t, "ProxyTransportBypassListLength", len(cfg.ProxyTransportBypassList), 3)
+	assertEqual(t, "ProxyTransportBypassList[1]", cfg.ProxyTransportBypassList[1], ".example.com")
 	if cfg.RequestLogQueueFlushInterval.String() != "10m0s" {
 		t.Errorf("RequestLogQueueFlushInterval: got %v, want 10m", cfg.RequestLogQueueFlushInterval)
 	}
+}
+
+func TestLoadEnvConfig_InvalidProxyTransportBypassList(t *testing.T) {
+	envs := requiredEnvs()
+	envs["RESIN_PROXY_TRANSPORT_BYPASS_LIST"] = "localhost:8080"
+	setEnvs(t, envs)
+	_, err := LoadEnvConfig()
+	if err == nil {
+		t.Fatal("expected error for invalid RESIN_PROXY_TRANSPORT_BYPASS_LIST")
+	}
+	assertContains(t, err.Error(), "RESIN_PROXY_TRANSPORT_BYPASS_LIST")
 }
 
 func TestLoadEnvConfig_DefaultPlatformFixedHeaderMultiline(t *testing.T) {

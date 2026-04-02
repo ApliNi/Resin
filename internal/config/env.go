@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Resinat/Resin/internal/netutil"
 	"github.com/Resinat/Resin/internal/platform"
 	"github.com/robfig/cron/v3"
 )
@@ -44,6 +45,7 @@ type EnvConfig struct {
 	ProxyTransportMaxIdleConns                      int
 	ProxyTransportMaxIdleConnsPerHost               int
 	ProxyTransportIdleConnTimeout                   time.Duration
+	ProxyTransportBypassList                        []string
 
 	// Request log
 	RequestLogQueueSize           int
@@ -113,6 +115,7 @@ func LoadEnvConfig() (*EnvConfig, error) {
 	cfg.ProxyTransportMaxIdleConns = envInt("RESIN_PROXY_TRANSPORT_MAX_IDLE_CONNS", 1024, &errs)
 	cfg.ProxyTransportMaxIdleConnsPerHost = envInt("RESIN_PROXY_TRANSPORT_MAX_IDLE_CONNS_PER_HOST", 64, &errs)
 	cfg.ProxyTransportIdleConnTimeout = envDuration("RESIN_PROXY_TRANSPORT_IDLE_CONN_TIMEOUT", 90*time.Second, &errs)
+	cfg.ProxyTransportBypassList = envTransportBypassList("RESIN_PROXY_TRANSPORT_BYPASS_LIST", []string{"localhost", "127.*", "192.168.*", "10.*", "172.16.*", "172.17.*", "172.18.*", "172.19.*", "172.20.*", "172.21.*", "172.22.*", "172.23.*", "172.24.*", "172.25.*", "172.26.*", "172.27.*", "172.28.*", "172.29.*", "172.30.*", "172.31.*"}, &errs)
 
 	// --- Request log ---
 	cfg.RequestLogQueueSize = envInt("RESIN_REQUEST_LOG_QUEUE_SIZE", 8192, &errs)
@@ -288,6 +291,11 @@ func LoadEnvConfig() (*EnvConfig, error) {
 	if cfg.ProxyTransportIdleConnTimeout <= 0 {
 		errs = append(errs, "RESIN_PROXY_TRANSPORT_IDLE_CONN_TIMEOUT must be positive")
 	}
+	if normalizedBypassList, normalizeErr := netutil.NormalizeTransportBypassList(cfg.ProxyTransportBypassList); normalizeErr != nil {
+		errs = append(errs, fmt.Sprintf("RESIN_PROXY_TRANSPORT_BYPASS_LIST: %v", normalizeErr))
+	} else {
+		cfg.ProxyTransportBypassList = normalizedBypassList
+	}
 	if cfg.ProxyTransportMaxIdleConnsPerHost > cfg.ProxyTransportMaxIdleConns {
 		errs = append(
 			errs,
@@ -373,6 +381,20 @@ func envStringSlice(key string, defaultVal []string, errs *[]string) []string {
 		return []string{}
 	}
 	return out
+}
+
+func envTransportBypassList(key string, defaultVal []string, errs *[]string) []string {
+	v, ok := os.LookupEnv(key)
+	if !ok {
+		return append([]string(nil), defaultVal...)
+	}
+	parsed := netutil.ParseTransportBypassEnv(v)
+	normalized, err := netutil.NormalizeTransportBypassList(parsed)
+	if err != nil {
+		*errs = append(*errs, fmt.Sprintf("%s: %v", key, err))
+		return append([]string(nil), defaultVal...)
+	}
+	return normalized
 }
 
 func validatePort(name string, value int, errs *[]string) {

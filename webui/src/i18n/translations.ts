@@ -338,6 +338,9 @@ const EXACT_ZH_TO_EN: Record<string, string> = {
   "出口探测": "Egress probe",
   "窗口内下载 / 上传流量（字节）": "Download / upload traffic in window (bytes)",
   "代理传输最大空闲连接": "Max idle proxy transport connections",
+  "不使用代理的地址": "Addresses that bypass proxy",
+  "命中这些地址时会直连，不再走上游代理节点；支持精确主机名、域名后缀、IPv4 前缀通配与 CIDR，匹配时忽略端口。":
+    "Matched destinations connect directly instead of using upstream proxy nodes. Supports exact hosts, domain suffixes, IPv4 prefix wildcards, and CIDR ranges. Ports are ignored when matching.",
   "单主机最大空闲连接": "Max idle connections per host",
   "当前加载时间与下一次计划更新时间":
     "Current load time and next scheduled update time",

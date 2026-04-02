@@ -84,6 +84,7 @@ services:
       RESIN_AUTH_VERSION: "V1" # 必填：LEGACY_V0 或 V1
       RESIN_ADMIN_TOKEN: "admin123" # 修改为你的管理后台密码
       RESIN_PROXY_TOKEN: "my-token" # 修改为你的代理密码
+      RESIN_PROXY_TRANSPORT_BYPASS_LIST: "localhost;127.*;192.168.*;10.*;172.16.*;172.17.*;172.18.*;172.19.*;172.20.*;172.21.*;172.22.*;172.23.*;172.24.*;172.25.*;172.26.*;172.27.*;172.28.*;172.29.*;172.30.*;172.31.*" # 可选：本地与内网地址直连，不走上游代理节点
       RESIN_LISTEN_ADDRESS: 0.0.0.0
       RESIN_PORT: 2260
     ports:
@@ -112,6 +113,7 @@ services:
 如果你只需要一个高性能、大容量、且会自动健康管理的通用代理池，Resin 开箱即用。
 启动 Resin 服务后，给你的应用程序接入 `http://127.0.0.1:2260` 代理即可。  
 如果你不想设置代理密码，请将环境变量显式设为空字符串：`RESIN_PROXY_TOKEN=""`（变量必须定义）。此时可直接接入 `http://127.0.0.1:2260`。下面是使用 curl 的一个例子：
+如果你希望本地地址或内网地址直连，而不是继续走上游代理节点，可以设置 `RESIN_PROXY_TRANSPORT_BYPASS_LIST`。多个规则使用分号或换行分隔，支持精确主机名（如 `localhost`）、域名后缀（如 `.example.com`）、IPv4 前缀通配（如 `127.*`）以及 CIDR（如 `10.0.0.0/8`），匹配时会忽略端口。
 
 
 ```bash
@@ -262,6 +264,7 @@ curl "http://127.0.0.1:2260/my-token/MyPlatform/https/api.example.com/v1/orders"
 RESIN_ADMIN_TOKEN=【管理面板密码】 \
 RESIN_AUTH_VERSION=V1 \
 RESIN_PROXY_TOKEN=【代理密码】 \
+RESIN_PROXY_TRANSPORT_BYPASS_LIST='localhost;127.*;192.168.*;10.*;172.16.*;172.17.*;172.18.*;172.19.*;172.20.*;172.21.*;172.22.*;172.23.*;172.24.*;172.25.*;172.26.*;172.27.*;172.28.*;172.29.*;172.30.*;172.31.*' \
 RESIN_STATE_DIR=./data/state \
 RESIN_CACHE_DIR=./data/cache \
 RESIN_LOG_DIR=./data/log \
@@ -292,6 +295,7 @@ go build -tags "with_quic with_wireguard with_grpc with_utls" -o resin ./cmd/res
 RESIN_ADMIN_TOKEN=【管理面板密码】 \
 RESIN_AUTH_VERSION=V1 \
 RESIN_PROXY_TOKEN=【代理密码】 \
+RESIN_PROXY_TRANSPORT_BYPASS_LIST='localhost;127.*;192.168.*;10.*;172.16.*;172.17.*;172.18.*;172.19.*;172.20.*;172.21.*;172.22.*;172.23.*;172.24.*;172.25.*;172.26.*;172.27.*;172.28.*;172.29.*;172.30.*;172.31.*' \
 RESIN_STATE_DIR=./data/state \
 RESIN_CACHE_DIR=./data/cache \
 RESIN_LOG_DIR=./data/log \

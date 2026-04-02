@@ -798,6 +798,18 @@ export function SystemConfigPage() {
                       <label className="field-label" style={{ margin: 0 }}>{t("空闲连接超时时间")}</label>
                       <Input readOnly disabled value={envBaseline.proxy_transport_idle_conn_timeout} />
                     </div>
+                    <div className="field-group field-span-2">
+                      <label className="field-label" style={{ margin: 0 }}>{t("不使用代理的地址")}</label>
+                      <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: "4px 0 8px" }}>
+                        {t("命中这些地址时会直连，不再走上游代理节点；支持精确主机名、域名后缀、IPv4 前缀通配与 CIDR，匹配时忽略端口。")}
+                      </p>
+                      <Textarea
+                        readOnly
+                        disabled
+                        rows={6}
+                        value={envBaseline.proxy_transport_bypass_list?.join("\n") || t("无")}
+                      />
+                    </div>
                   </div>
                 </section>
 

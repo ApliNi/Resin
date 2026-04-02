@@ -6,8 +6,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/puzpuzpuz/xsync/v4"
+	"github.com/Resinat/Resin/internal/netutil"
 	"github.com/Resinat/Resin/internal/node"
+	"github.com/puzpuzpuz/xsync/v4"
 	"github.com/sagernet/sing-box/adapter"
 	M "github.com/sagernet/sing/common/metadata"
 )
@@ -16,6 +17,8 @@ type OutboundTransportConfig struct {
 	MaxIdleConns        int
 	MaxIdleConnsPerHost int
 	IdleConnTimeout     time.Duration
+	BypassList          []string
+	directDialContext   func(ctx context.Context, network, addr string) (net.Conn, error)
 }
 
 const (
@@ -34,6 +37,9 @@ func normalizeOutboundTransportConfig(cfg OutboundTransportConfig) OutboundTrans
 	if cfg.IdleConnTimeout <= 0 {
 		cfg.IdleConnTimeout = defaultTransportIdleConnTimeout
 	}
+	if cfg.BypassList == nil {
+		cfg.BypassList = []string{}
+	}
 	return cfg
 }
 
@@ -41,8 +47,9 @@ func normalizeOutboundTransportConfig(cfg OutboundTransportConfig) OutboundTrans
 // A single instance should be shared by forward/reverse proxies so keep-alive pools
 // are reused and can be evicted on node removal.
 type OutboundTransportPool struct {
-	config     OutboundTransportConfig
-	transports *xsync.Map[node.Hash, *http.Transport]
+	config        OutboundTransportConfig
+	bypassMatcher *netutil.TransportBypassMatcher
+	transports    *xsync.Map[node.Hash, *http.Transport]
 }
 
 func newOutboundTransportPool() *OutboundTransportPool {
@@ -55,9 +62,15 @@ func newOutboundTransportPoolWithConfig(cfg OutboundTransportConfig) *OutboundTr
 
 // NewOutboundTransportPool creates a transport pool with normalized settings.
 func NewOutboundTransportPool(cfg OutboundTransportConfig) *OutboundTransportPool {
+	normalized := normalizeOutboundTransportConfig(cfg)
+	bypassMatcher, err := netutil.CompileTransportBypassMatcher(normalized.BypassList)
+	if err != nil {
+		panic(err)
+	}
 	return &OutboundTransportPool{
-		config:     normalizeOutboundTransportConfig(cfg),
-		transports: xsync.NewMap[node.Hash, *http.Transport](),
+		config:        normalized,
+		bypassMatcher: bypassMatcher,
+		transports:    xsync.NewMap[node.Hash, *http.Transport](),
 	}
 }
 
@@ -94,9 +107,26 @@ func (p *OutboundTransportPool) CloseAll() {
 }
 
 func (p *OutboundTransportPool) newReusableOutboundTransport(ob adapter.Outbound, sink MetricsEventSink) *http.Transport {
+	directDialContext := p.config.directDialContext
+	if directDialContext == nil {
+		dialer := &net.Dialer{}
+		directDialContext = dialer.DialContext
+	}
 	return &http.Transport{
 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			conn, err := ob.DialContext(ctx, network, M.ParseSocksaddr(addr))
+			host := addr
+			if parsedHost, _, splitErr := net.SplitHostPort(addr); splitErr == nil {
+				host = parsedHost
+			}
+			var (
+				conn net.Conn
+				err  error
+			)
+			if p.bypassMatcher != nil && p.bypassMatcher.MatchHost(host) {
+				conn, err = directDialContext(ctx, network, addr)
+			} else {
+				conn, err = ob.DialContext(ctx, network, M.ParseSocksaddr(addr))
+			}
 			if err != nil {
 				return nil, err
 			}
